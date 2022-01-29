@@ -17,34 +17,48 @@ workflow INPUT_CHECK {
         .set { reads }
 
     emit:
-    reads // channel: [ val(meta), [ reads ] ]
+    // channel: [ val(meta), [ reads ] ]
+    reads
 }
 
 // Function to get list of [ meta, [ fastq_1, fastq_2 ] ]
 def create_fastq_channels(LinkedHashMap row) {
     def meta = [:]
-    meta.id         = row.sample
-    meta.platform   = row.platform
+    meta.id       = row.sample
+    meta.method   = row.method
+    meta.platform = row.platform
 
-    def array = []
-    // TODO Check if file exist for each condition
-    if (!file(row.fastq).exists() && !file(row.fastq_1).exists() && !file(row.fastq_2).exists()) {
-        exit 1, "ERROR: Please check input samplesheet -> Read 1 FastQ file does not exist!\n${row.fastq_1}"
+    def files = [:]
+    if (row.fastq) { 
+        files.longread = [file(row.fastq)]
+    }
+    if (row.fastq_1 && row.fastq_2) {
+        files.shortread = [file(row.fastq_1), file(row.fastq_2)]
     }
 
-    if (meta.platform == "shortread") {
+    def array = []
+
+    // Check for file existence
+
+    if (meta.method == "shortread") {
+        if (!file(row.fastq_1).exists() && !file(row.fastq_2).exists()) {
+            exit 1, "ERROR: Please check input samplesheet -> FastQ file does not exist!\n${row.sample}"
+        }
         array = [ meta, [ file(row.fastq_1), file(row.fastq_2) ] ]
-    } else if (meta.platform == "longread") {
-        array = [ meta, [ file(row.fastq )] ]
-    } else if (meta.platform == "hybrid") {
-        array = [ meta, [ file(row.fastq), file(row.fastq_1), file(row.fastq_2) ] ]
+    } else if (meta.method == "longread") {
+        if (!file(row.fastq).exists()) {
+            exit 1, "ERROR: Please check input samplesheet -> FastQ file does not exist!\n${row.sample}"
+        }
+        array = [ meta, [ file(row.fastq) ] ]
+    } else if (meta.method == "hybrid") {
+        if (!file(row.fastq).exists() && !file(row.fastq_1).exists() && !file(row.fastq_2).exists()) {
+            exit 1, "ERROR: Please check input samplesheet -> FastQ file does not exist!\n${row.sample}"
+        }
+        array = [ meta, files.longread, files.shortread ]
     }
 
     else {
-        if (!file(row.fastq_2).exists()) {
-            exit 1, "ERROR: Please check input samplesheet -> Read 2 FastQ file does not exist!\n${row.fastq_2}"
-        }
-        array = [ meta, [ file(row.fastq_1), file(row.fastq_2) ] ]
+        exit 1, "ERROR: Please check input samplesheet -> Platform muse be specified!\n${row.sample}" 
     }
     return array
 }
