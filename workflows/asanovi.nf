@@ -102,6 +102,9 @@ workflow ASANOVI {
     ASSEMBLY (
         INPUT_CHECK.out.reads
     )
+    ch_software_versions = ch_software_versions.mix(ASSEMBLY.out[0].versions.first())
+    ASSEMBLY.out[0].versions.view()
+    ch_software_versions.view()
 	// MODULE: SPADES 
 	//
 	/* SPADE ( */

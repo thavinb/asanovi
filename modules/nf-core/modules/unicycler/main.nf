@@ -1,6 +1,8 @@
 process UNICYCLER {
     tag "$meta.id"
     label 'process_high'
+    publishDir "${params.outdir}/unicycler/${meta.id}",
+        mode: params.publish_dir_mode
     
     conda (params.enable_conda ? 'bioconda::unicycler=0.4.8' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?

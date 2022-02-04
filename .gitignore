@@ -4,5 +4,5 @@ data/
 results/
 .DS_Store
 testing/
-testing*
+test*
 *.pyc
