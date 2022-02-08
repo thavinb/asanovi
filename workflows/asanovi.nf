@@ -33,12 +33,11 @@ ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multi
 */
 
 // Don't overwrite global params.modules, create a copy instead and use that within the main script.
-def modules = params.modules.clone()
+/* def modules = params.modules.clone() */
 
 //
 // MODULE: Local to the pipeline
 //
-include { GET_SOFTWARE_VERSIONS } from '../modules/local/get_software_versions' addParams( options: [publish_files : ['tsv':'']] )
 
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
@@ -52,18 +51,11 @@ include { ASSEMBLY } from '../subworkflows/local/assembly' addParams( options: [
 ========================================================================================
 */
 
-def multiqc_options   = modules['multiqc']
-multiqc_options.args += params.multiqc_title ? Utils.joinModuleArgs(["--title \"$params.multiqc_title\""]) : ''
-
 //
 // MODULE: Installed directly from nf-core/modules
 //
-include { FASTQC  } from '../modules/nf-core/modules/fastqc/main'  addParams( options: modules['fastqc'] )
-include { MULTIQC } from '../modules/nf-core/modules/multiqc/main' addParams( options: multiqc_options   )
-/* include { SPADES } from '../modules/nf-core/modules/spades/main' addParams( options: ) */
-/* include { CANU } from '../modules/local/canu.nf' addParams( options: ) */
-/* include { UNICYCLER } from '../modules/nf-core/modules/unicycler/main' addParams( options: ) */
-/* include { FLYE } from '..modules/local/flye.nf' addParams( options: ) */
+include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/modules/custom/dumpsoftwareversions/main'
+
 /*
 ========================================================================================
     RUN MAIN WORKFLOW
@@ -75,7 +67,7 @@ def multiqc_report = []
 
 workflow ASANOVI {
 
-    ch_software_versions = Channel.empty()
+    ch_versions = Channel.empty()
 
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
@@ -83,74 +75,25 @@ workflow ASANOVI {
     INPUT_CHECK (
         ch_input
     )
+    ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
 
     //
-    // MODULE: Run FastQC
+    // SUBWORKFLOW: Branch read channel to program in each method
     //
-    /* FASTQC ( */
-    /*     INPUT_CHECK.out.reads */
-    /* ) */
-    /* ch_software_versions = ch_software_versions.mix(FASTQC.out.version.first().ifEmpty(null)) */
-    
-    //
-	// TODO: CONDITION FOR 
-	// SHORT READ ASSEMBLY OR HYBRID ASSEMBLY 
-	// AND 
-	// LONG READ ASSEMBLY
-	// 
-	
     ASSEMBLY (
         INPUT_CHECK.out.reads
     )
-    ch_software_versions = ch_software_versions.mix(ASSEMBLY.out[0].versions.first())
-    ASSEMBLY.out[0].versions.view()
-    ch_software_versions.view()
-	// MODULE: SPADES 
-	//
-	/* SPADE ( */
-	/* 	ch_input */
-	/* ) */
-
-	//
-	// MODULE: FLYE
-	//
-	/* FLYE ( */
-	/* 	ch_input */
-	/* ) */	
-
+    ch_versions = ch_versions.mix(ASSEMBLY.out.versions)
+    
     //
     // MODULE: Pipeline reporting
     //
-    ch_software_versions
-        .map { it -> if (it) [ it.baseName, it ] }
-        .groupTuple()
-        .map { it[1][0] }
-        .flatten()
-        .collect()
-        .set { ch_software_versions }
 
-    GET_SOFTWARE_VERSIONS (
-        ch_software_versions.map { it }.collect()
+    CUSTOM_DUMPSOFTWAREVERSIONS (
+        ch_versions.unique().collectFile(name: 'collated_versions.yml')
+
     )
 
-    //
-    // MODULE: MultiQC
-    //
-    /* workflow_summary    = WorkflowAsanovi.paramsSummaryMultiqc(workflow, summary_params) */
-    /* ch_workflow_summary = Channel.value(workflow_summary) */
-
-    /* ch_multiqc_files = Channel.empty() */
-    /* ch_multiqc_files = ch_multiqc_files.mix(Channel.from(ch_multiqc_config)) */
-    /* ch_multiqc_files = ch_multiqc_files.mix(ch_multiqc_custom_config.collect().ifEmpty([])) */
-    /* ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml')) */
-    /* ch_multiqc_files = ch_multiqc_files.mix(GET_SOFTWARE_VERSIONS.out.yaml.collect()) */
-    /* ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]}.ifEmpty([])) */
-
-    /* MULTIQC ( */
-    /*     ch_multiqc_files.collect() */
-    /* ) */
-    /* multiqc_report       = MULTIQC.out.report.toList() */
-    /* ch_software_versions = ch_software_versions.mix(MULTIQC.out.version.ifEmpty(null)) */
 }
 
 /*
