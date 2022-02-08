@@ -1,8 +1,8 @@
 process UNICYCLER {
     tag "$meta.id"
     label 'process_high'
-    publishDir "${params.outdir}/unicycler/${meta.id}",
-        mode: params.publish_dir_mode
+    /* publishDir "${params.outdir}/unicycler/${meta.id}", */
+    /*     mode: params.publish_dir_mode */
     
     conda (params.enable_conda ? 'bioconda::unicycler=0.4.8' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -13,8 +13,8 @@ process UNICYCLER {
     tuple val(meta), path(longreads), path(shortreads)
 
     output:
-    tuple val(meta), path('*.scaffolds.fa.gz'), emit: scaffolds
-    tuple val(meta), path('*.assembly.gfa.gz'), emit: gfa
+    tuple val(meta), path('*.scaffolds.fa.gz'), optional:true, emit: scaffolds
+    tuple val(meta), path('*.assembly.gfa.gz'), optional:true, emit: gfa
     tuple val(meta), path('*.log')            , emit: log
     path  "versions.yml"                      , emit: versions
 

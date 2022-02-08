@@ -1,11 +1,8 @@
-// TODO nf-core: Optional inputs are not currently supported by Nextflow. However, using an empty
-//               list (`[]`) instead of a file can be used to work around this issue.
-
 process FLYE {
     tag "$meta.id"
     label 'process_high'
-    publishDir "${params.outdir}/flye/${meta.id}",
-        mode: params.publish_dir_mode
+    /* publishDir "${params.outdir}/flye/${meta.id}", */
+    /*     mode: params.publish_dir_mode */
     
     conda (params.enable_conda ? "bioconda::flye=2.9" : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -16,11 +13,11 @@ process FLYE {
     tuple val(meta), path(longreads)
 
     output:
-    tuple val(meta), path("*.fasta.gz"), emit: fasta
-    tuple val(meta), path("*.gfa.gz"), emit: gfa
-    tuple val(meta), path("*.gv"), emit: gv
-    tuple val(meta), path("*.txt"), emit: info
-    path "versions.yml"           , emit: versions
+    tuple val(meta), path("*.fasta.gz"), optional:true,  emit: fasta
+    tuple val(meta), path("*.gfa.gz")  , optional:true,  emit: gfa
+    tuple val(meta), path("*.gv")      , optional:true,  emit: gv
+    tuple val(meta), path("*.txt")     , emit: info
+    path "versions.yml"                , emit: versions
 
     script:
     def args = task.ext.args ?: ''

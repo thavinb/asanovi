@@ -1,8 +1,8 @@
 process SPADES {
     tag "$meta.id"
     label 'process_high'
-    publishDir "${params.outdir}/spades/${meta.id}",
-        mode: params.publish_dir_mode
+    /* publishDir "${params.outdir}/spades/${meta.id}", */
+    /*     mode: params.publish_dir_mode */
 
     conda (params.enable_conda ? 'bioconda::spades=3.15.3' : null)
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?

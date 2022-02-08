@@ -12,6 +12,7 @@ workflow INPUT_CHECK {
 
     main:
     SAMPLESHEET_CHECK ( samplesheet )
+        .csv
         .splitCsv ( header:true, sep:',' )
         .map { create_fastq_channels(it) }
         .set { reads }
@@ -19,6 +20,7 @@ workflow INPUT_CHECK {
     emit:
     // channel: [ val(meta), [ reads ] ]
     reads
+    versions = SAMPLESHEET_CHECK.out.versions
 }
 
 // Function to get list of [ meta, [ fastq_1, fastq_2 ] ]

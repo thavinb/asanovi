@@ -1,8 +1,5 @@
 //
-// Distribute input by the method to different assembly programs
-// Shortread -> SPADES
-// Longread -> FLYE
-// Hybrid -> UNICYCLER
+// Branch input channel by method of assembly to the designated software.
 // 
 
 params.options = [:]
@@ -31,11 +28,14 @@ workflow ASSEMBLY {
     UNICYCLER {
         method.hybrid
     }
-    
+
+    ch_reads = Channel.empty()
+    ch_reads = ch_reads.mix(SPADES.out.scaffolds, FLYE.out.fasta, UNICYCLER.out.scaffolds)
+
+    ch_vers = Channel.empty()
+    ch_vers = ch_vers.mix(SPADES.out.versions.first(),FLYE.out.versions.first(),UNICYCLER.out.versions.first())
 
     emit:
-    /* SPADES.out */
-    /* FLYE.out */
-    /* UNICYCLER.out */
-    [SPADES.out, FLYE.out, UNICYCLER.out]
+    fasta = ch_reads
+    versions = ch_vers
 }
