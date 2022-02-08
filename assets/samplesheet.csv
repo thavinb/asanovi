@@ -1,3 +1,6 @@
-sample,fastq_1,fastq_2
-SAMPLE_PAIRED_END,/path/to/fastq/files/AEG588A1_S1_L002_R1_001.fastq.gz,/path/to/fastq/files/AEG588A1_S1_L002_R2_001.fastq.gz
-SAMPLE_SINGLE_END,/path/to/fastq/files/AEG588A4_S4_L003_R1_001.fastq.gz,
+sample,platform,fastq,fastq_1,fastq_2
+SAMPLE_ID_1_SHORTREAD,,,/path/to/fastq/SAMPLE_1_SHORTREAD_01.fastq.gz,/path/to/fastq/SAMPLE_1_SHORTREAD_02.fastq.gz
+SAMPLE_ID_2_LONGREAD,nano,/path/to/fastq/SAMPLE_2_LONGREAD.fastq.gz,,
+SAMPLE_ID_3_LONGREAD,pacbio,/path/to/fastq/SAMPLE_3_LONGREAD.fastq.gz,,
+SAMPLE_ID_4_HYBRID,nano,/path/to/fastq/SAMPLE_4_LONGREAD.fastq.gz,/path/to/fastq/SAMPLE_4_SHORTREAD_01.fastq.gz,/path/to/fastq/SAMPLE_4_SHORTREAD_02.fastq.gz 
+SAMPLE_ID_5_HYBRID,pacbio,/path/to/fastq/SAMPLE_5_LONGREAD.fastq.gz,/path/to/fastq/SAMPLE_5_SHORTREAD_01.fastq.gz,/path/to/fastq/SAMPLE_5_SHORTREAD_02.fastq.gz 

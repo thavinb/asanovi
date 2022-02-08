@@ -1,0 +1,142 @@
+#!/bin/bash 
+
+#help message
+get_help() {
+    printf "
+    ASANOVI
+    Bacterial de novo assembly pipeline
+
+    Usage: asanovi [-i <input>] [-o <outdir>] [-c <config_file>] [-p <{docker|singularity|conda}>] [-r]
+    
+    OPTIONS
+        -i, --input FILE          Sample sheet in csv format. Look at the assets/samplesheet.csv in program directory for an example format.   
+        -o, --outdir DIR          Output directory. If not specified, the defualt path is directory running the pipeline.
+        -c, --include-conf FILE   Using non-defualt config file for the setting of modules in pipeline instead of conf/modules.config .
+        -p, --profile CONTAINER   Specify container platform. Current accept parameters are docker, singularity, and conda.
+        -r, --resume RUN_NAME     Resume the pipeline from cache. This require nextflow 'work' dir in the directory running the pipeline. If run 
+                                  name is not specified, nextflow will resume from the last run. To see all the previous run log, type 'nextflow log'  
+                                  in the directory running the pipeline.  
+        --create-conf FILE        Copy the conf/modules.config to the current directory. For customize the setting of modules in the pipeline. Use -c 
+                                  when start the pipeline to use the custom config file rather than the default config.   
+        --with-trace
+        --with-dag
+
+"
+}
+
+# get directory of bash script
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]
+then
+    DIR="$PWD"
+fi
+
+# check file exist
+check_file() {
+    if [ ! -f "$1" ]
+    then 
+        echo "File: ${1} not found";
+        exit 1;
+    fi
+}
+
+# check for repeat options
+check_var() {
+    if [ ! -z "$2" ]
+    then 
+        errvar_arr+=("ERR: Multiple ${1} options");
+    fi
+}
+
+# copy conf/modules.config
+copy_conf() {
+    echo "Copying from defualt config file"
+    echo "File: $1 created"
+    echo "Use -c to use custom config file instead of the defualt modules.conf"
+    cp $DIR/conf/modules.config $1
+}
+
+
+
+opts=$(getopt -o i:o:c:g:r::p:h -l input:,output:,genome-size:,create-conf::,resume::,with-trace,with-dag,profile:,help -n 'asanovi' -- "$@")
+
+if [ $? != 0 ]
+then 
+    echo "ERR: 'asanovi --help' for help"
+    exit 1
+fi
+
+eval set -- "$opts"
+
+INPUT=
+OUTPUT=
+CUSTOM_CONF=
+CONF_FILE=
+PROFILE=
+RESUME=
+W_TRACE=
+W_DAG=
+errvar_arr=()
+
+while true
+do
+    case "$1" in
+        -i | --input ) check_var $1 $INPUT ; INPUT="$2"; check_file $INPUT ; shift 2 ;;
+        -o | --outdir ) check_var $1 $OUTPUT ; OUTPUT="--outdir $2"; shift 2 ;;
+        -c | --include-conf ) check_var $1 $CUSTOM_CONF ; CUSTOM_CONF="--custom_conf $2" ; CONF_FILE="$2"; shift 2 ;;
+        -p | --profile ) check_var $1 $PROFILE ;
+            case "$2" in
+                "docker" ) PROFILE="-profile docker" ; shift 2 ;;
+                "singularity" ) PROFILE="-profile singularity" ; shift 2 ;;
+                "conda" ) PROFILE="-profile conda" ; shift 2 ;;
+                * ) echo "ERR: Invalid profile. Only docker, singularity, and conda are supported" ; exit 1 ;;
+            esac ;;
+        -r | --resume ) check_var $1 $RESUME ;
+			case "$2" in
+				"") RESUME=-resume ; shift ;; 
+				*) RESUME="-resume $2" ; shift 2;;
+			esac ;;
+        --with-trace ) check_var $1 $W_TRACE ; W_TRACE=-with-trace ; shift ;;
+        --with-dag ) check_var $1 $W_DAG ; W_DAG=-with-dag ; shift ;;
+        # --create-sample-sheet ) echo "sample sheet created"; shift ;;
+        --create-conf )
+            case "$2" in
+                "") copy_conf asanovi_custom.conf ; exit ;;
+                *) copy_conf $2 ; exit ;;
+            esac ;;
+		-h | --help) get_help; exit ;;
+        -- ) shift ; break ;;
+        * ) get_help ; exit ;;
+    esac
+done
+
+# Report an error if any option appear more than once.
+if [ ${#errvar_arr[@]} != 0 ] 
+then 
+    for err in "${errvar_arr[@]}"
+    do
+        echo "$err"
+    done
+    exit
+fi
+
+# Check for input
+if [ -z "$INPUT" ]
+then
+    echo "ERR: No input specified"
+    exit 1 ;
+fi
+
+# Report error for extra argument
+if [ ! -z "$1" ]
+then 
+    echo "ERR: Invalid arguments ${1}"
+    echo "ERR: 'asanovi --help' for help"
+    exit 1 ; 
+fi
+
+echo "nextflow  run $DIR/main.nf --input $INPUT $OUTPUT $CUSTOM_CONF $PROFILE $RESUME $W_TRACE $W_DAG"
+nextflow run $DIR/main.nf --input $INPUT $OUTPUT $CUSTOM_CONF  $PROFILE $RESUME $W_TRACE $W_DAG
+
+
+
