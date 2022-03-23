@@ -58,7 +58,7 @@ copy_conf() {
 
 
 
-opts=$(getopt -o i:o:c:g:r::p:h -l input:,output:,genome-size:,create-conf::,resume::,with-trace,with-dag,profile:,help -n 'asanovi' -- "$@")
+opts=$(getopt -o i:o:c:g:r::p:h -l input:,outdir:,genome-size:,create-conf::,resume::,with-trace,with-dag,profile:,help -n 'asanovi' -- "$@")
 
 if [ $? != 0 ]
 then 
@@ -83,7 +83,7 @@ do
     case "$1" in
         -i | --input ) check_var $1 $INPUT ; INPUT="$2"; check_file $INPUT ; shift 2 ;;
         -o | --outdir ) check_var $1 $OUTPUT ; OUTPUT="--outdir $2"; shift 2 ;;
-        -c | --include-conf ) check_var $1 $CUSTOM_CONF ; CUSTOM_CONF="--custom_conf $2" ; CONF_FILE="$2"; shift 2 ;;
+        -c | --include-conf ) check_var $1 $CUSTOM_CONF ; CUSTOM_CONF="--custom_config $2" ; CONF_FILE="$2"; shift 2 ;;
         -p | --profile ) check_var $1 $PROFILE ;
             case "$2" in
                 "docker" ) PROFILE="-profile docker" ; shift 2 ;;
@@ -93,7 +93,7 @@ do
             esac ;;
         -r | --resume ) check_var $1 $RESUME ;
 			case "$2" in
-				"") RESUME=-resume ; shift ;; 
+				"") RESUME="-resume" ; shift 2;; 
 				*) RESUME="-resume $2" ; shift 2;;
 			esac ;;
         --with-trace ) check_var $1 $W_TRACE ; W_TRACE=-with-trace ; shift ;;
