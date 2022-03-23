@@ -42,8 +42,8 @@ ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multi
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
-include { INPUT_CHECK } from '../subworkflows/local/input_check' addParams( options: [:] )
-include { ASSEMBLY } from '../subworkflows/local/assembly' addParams( options: [:] )
+include { INPUT_CHECK } from '../subworkflows/local/input_check' 
+include { HYBRID_ASSEMBLY } from '../subworkflows/local/hybrid_assembly.nf' 
 
 /*
 ========================================================================================
@@ -55,6 +55,8 @@ include { ASSEMBLY } from '../subworkflows/local/assembly' addParams( options: [
 // MODULE: Installed directly from nf-core/modules
 //
 include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/modules/custom/dumpsoftwareversions/main'
+include { SPADES as SHORTREAD_ASSEMBLY_SPADES } from '../modules/nf-core/modules/spades/main.nf'
+include { FLYE as LONGREAD_ASSEMBLY_FLYE} from '../modules/local/flye' 
 
 /*
 ========================================================================================
@@ -72,18 +74,49 @@ workflow ASANOVI {
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
+
     INPUT_CHECK (
         ch_input
     )
     ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
 
     //
-    // SUBWORKFLOW: Branch read channel to program in each method
+    // Branching input channel by meta.method 
     //
-    ASSEMBLY (
-        INPUT_CHECK.out.reads
+
+    INPUT_CHECK.out.reads
+    .branch { 
+        shortread:  it[0].method == "shortread"
+        longread:   it[0].method == "longread"
+        hybrid:     it[0].method == "hybrid"
+    }.set { types }
+
+    //
+    // SHORTREAD ASSEMBLY
+    //
+
+    SHORTREAD_ASSEMBLY_SPADES {
+        types.shortread
+    }    
+    ch_versions = ch_versions.mix(SHORTREAD_ASSEMBLY_SPADES.out.versions)
+
+    //
+    // LONGREAD ASSEMBLY
+    //
+
+    LONGREAD_ASSEMBLY_FLYE {
+        types.longread
+    }
+    ch_versions = ch_versions.mix(LONGREAD_ASSEMBLY_FLYE.out.versions)
+    
+    //
+    // HYBRID ASSEMBLY
+    //
+
+    HYBRID_ASSEMBLY (
+        types.hybrid
     )
-    ch_versions = ch_versions.mix(ASSEMBLY.out.versions)
+    ch_versions = ch_versions.mix(HYBRID_ASSEMBLY.out.versions)
     
     //
     // MODULE: Pipeline reporting
