@@ -44,6 +44,19 @@
                 }
             }
         },
+        "custom_config_options": {
+            "title": "User-specified config file",
+            "type": "object",
+            "description": "User-specified config file will override the default modules.config",
+            "properties": {
+                "custom_config": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Path to user config file",
+                    "help_text": "If left blank will use defualt modules.config instead"
+                }
+            }
+        },
         "reference_genome_options": {
             "title": "Reference genome options",
             "type": "object",
@@ -286,6 +299,9 @@
         },
         {
             "$ref": "#/definitions/generic_options"
+        },
+        {
+            "$ref": "#/definitions/custom_config_options"
         }
     ]
 }

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-# TODO nf-core: Update the script to check the samplesheet
 # This script is based on the example at: https://raw.githubusercontent.com/nf-core/test-datasets/viralrecon/samplesheet/samplesheet_test_illumina_amplicon.csv
 
 import os
@@ -38,14 +37,14 @@ def print_error(error, context="Line", context_str=""):
     sys.exit(1)
 
 
-# TODO nf-core: Update the check_samplesheet function
 def check_samplesheet(file_in, file_out):
     """
     This function checks that the samplesheet follows the following structure:
 
     sample,platform,fastq,fastq_1,fastq_2
     A1,nano,A1_LR.fastq.gz,A1_1.fastq.gz,A1_2.fastq.gz
-    A2,nano,A2_LR.fastq.gz,A2_1.fastq.gz,A2_2.fastq.gz
+    A2,nano,A2_LR.fastq.gz,,
+    A3,,,A3_1.fastq.gz,A3_2.fastq.gz
 
     For an example see:
     https://raw.githubusercontent.com/nf-core/test-datasets/viralrecon/samplesheet/samplesheet_test_illumina_amplicon.csv
@@ -56,7 +55,6 @@ def check_samplesheet(file_in, file_out):
 
         ## Check header
         MIN_COLS = 3
-        # TODO nf-core: Update the column names for the input samplesheet
         HEADER = ["sample","platform","fastq","fastq_1", "fastq_2"]
         header = [x.strip('"') for x in fin.readline().strip().split(",")]
         if header[: len(HEADER)] != HEADER:
@@ -111,7 +109,7 @@ def check_samplesheet(file_in, file_out):
                             line,
                         )
 
-            ## TODO check platform
+            ## Check platform
             if platform not in ['nano','pacbio','']:
                 print_error("Platform must specified either in 'nano','pacbio',or ''(blank)!")
 
@@ -129,7 +127,8 @@ def check_samplesheet(file_in, file_out):
             else:
                 print_error("Invalid combination of columns provided!", "Line", line)
 
-            ## TODO Create sample mapping dictionary = { sample: [ platform, fastq, fastq_1, fastq_2 ] }
+            ## Create sample mapping dictionary
+            ## { sample: [ platform, fastq, fastq_1, fastq_2 ] }
             if sample not in sample_mapping_dict:
                 sample_mapping_dict[sample] = [sample_info]
             else:
