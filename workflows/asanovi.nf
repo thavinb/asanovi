@@ -56,6 +56,8 @@ include { HYBRID_ASSEMBLY } from '../subworkflows/local/hybrid_assembly.nf'
 include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/modules/custom/dumpsoftwareversions/main'
 include { SPADES as SHORTREAD_ASSEMBLY_SPADES } from '../modules/nf-core/modules/spades/main.nf'
 include { FLYE as LONGREAD_ASSEMBLY_FLYE} from '../modules/local/flye' 
+include { QUAST } from '../modules/nf-core/modules/quast/main'
+include { MULTIQC } from '../modules/nf-core/modules/multiqc/main'
 
 /*
 ========================================================================================
@@ -121,10 +123,47 @@ workflow ASANOVI {
     // MODULE: Pipeline reporting
     //
 
+    Ch_assemblies = Channel.empty()
+
+    Ch_assemblies = Ch_assemblies.mix(
+        SHORTREAD_ASSEMBLY_SPADES.out.contigs.collect{ it[1] },
+        LONGREAD_ASSEMBLY_FLYE.out.fasta.collect{ it[1] },
+        HYBRID_ASSEMBLY.out.fasta.collect{ it[1] }
+    ).collect()
+
+    Ch_assemblies.view()
+
+    Quast_fasta = Channel.fromPath('dummy_fasta')
+    Quast_gff = Channel.fromPath('dummy_gff')
+    QUAST (
+        Ch_assemblies,
+        Quast_fasta,
+        Quast_gff,
+        false,
+        false
+    )
+    
+    ch_versions = ch_versions.mix(QUAST.out.versions)
+
     CUSTOM_DUMPSOFTWAREVERSIONS (
         ch_versions.unique().collectFile(name: 'collated_versions.yml')
-
     )
+
+    workflow_summary  = WorkflowAsanovi.paramsSummaryMultiqc(workflow, summary_params)
+
+    ch_workflow_summary = Channel.value(workflow_summary)
+
+    ch_multiqc_files = Channel.empty()
+    ch_multiqc_files = ch_multiqc_files.mix(Channel.from(ch_multiqc_config))
+    ch_multiqc_files = ch_multiqc_files.mix(ch_multiqc_custom_config.collect().ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'))
+    ch_multiqc_files = ch_multiqc_files.mix(CUSTOM_DUMPSOFTWAREVERSIONS.out.mqc_yml.collect())
+    ch_multiqc_files = ch_multiqc_files.mix(QUAST.out.tsv.ifEmpty([]))
+
+    MULTIQC (
+        ch_multiqc_files.collect()
+    )
+
 
 }
 

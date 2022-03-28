@@ -9,3 +9,6 @@ report_section_order:
         order: -1001
 
 export_plots: true
+
+extra_fn_clean_exts:
+    - 'assembly'

@@ -6,7 +6,6 @@ include { FLYE } from '../../modules/local/flye'
 include { MINIMAP2_ALIGN  } from '../../modules/nf-core/modules/minimap2/align/main'
 include { SAMTOOLS_SORT as SAMTOOLS } from '../../modules/nf-core/modules/samtools/sort/main'
 include { PILON } from '../../modules/local/pilon'
-include { UNICYCLER } from'../../modules/nf-core/modules/unicycler/main'
 
 workflow HYBRID_ASSEMBLY{
     take: 
