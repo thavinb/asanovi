@@ -149,8 +149,11 @@ The assembly results are varies on the program used to do the assembly. The resu
 	* `multiqc_report.html`: `MultiQC` html report.	
 	* 
 </details>
+
 ![Quast_Icarus](docs/images/quast_report.png)
+
 ![Quast_Icarus](docs/images/quast_icarus.png)
+
 ![MultiQC](docs/images/multiqc.png)
 
 ### Pipeline information
