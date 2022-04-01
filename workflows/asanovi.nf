@@ -131,8 +131,6 @@ workflow ASANOVI {
         HYBRID_ASSEMBLY.out.fasta.collect{ it[1] }
     ).collect()
 
-    Ch_assemblies.view()
-
     Quast_fasta = Channel.fromPath('dummy_fasta')
     Quast_gff = Channel.fromPath('dummy_gff')
     QUAST (
