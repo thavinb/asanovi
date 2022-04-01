@@ -9,7 +9,6 @@ def summary_params = NfcoreSchema.paramsSummaryMap(workflow, params)
 // Validate input parameters
 WorkflowAsanovi.initialise(params, log)
 
-// TODO nf-core: Add all file path parameters for the pipeline to the list below
 // Check input path parameters to see if they exist
 def checkPathParamList = [ params.input, params.multiqc_config, params.fasta ]
 for (param in checkPathParamList) { if (param) { file(param, checkIfExists: true) } }
@@ -33,17 +32,17 @@ ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multi
 */
 
 // Don't overwrite global params.modules, create a copy instead and use that within the main script.
-def modules = params.modules.clone()
+/* def modules = params.modules.clone() */
 
 //
 // MODULE: Local to the pipeline
 //
-include { GET_SOFTWARE_VERSIONS } from '../modules/local/get_software_versions' addParams( options: [publish_files : ['tsv':'']] )
 
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
-include { INPUT_CHECK } from '../subworkflows/local/input_check' addParams( options: [:] )
+include { INPUT_CHECK } from '../subworkflows/local/input_check' 
+include { HYBRID_ASSEMBLY } from '../subworkflows/local/hybrid_assembly.nf' 
 
 /*
 ========================================================================================
@@ -51,14 +50,14 @@ include { INPUT_CHECK } from '../subworkflows/local/input_check' addParams( opti
 ========================================================================================
 */
 
-def multiqc_options   = modules['multiqc']
-multiqc_options.args += params.multiqc_title ? Utils.joinModuleArgs(["--title \"$params.multiqc_title\""]) : ''
-
 //
 // MODULE: Installed directly from nf-core/modules
 //
-include { FASTQC  } from '../modules/nf-core/modules/fastqc/main'  addParams( options: modules['fastqc'] )
-include { MULTIQC } from '../modules/nf-core/modules/multiqc/main' addParams( options: multiqc_options   )
+include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/modules/custom/dumpsoftwareversions/main'
+include { SPADES as SHORTREAD_ASSEMBLY_SPADES } from '../modules/nf-core/modules/spades/main.nf'
+include { FLYE as LONGREAD_ASSEMBLY_FLYE} from '../modules/local/flye' 
+include { QUAST } from '../modules/nf-core/modules/quast/main'
+include { MULTIQC } from '../modules/nf-core/modules/multiqc/main'
 
 /*
 ========================================================================================
@@ -71,56 +70,99 @@ def multiqc_report = []
 
 workflow ASANOVI {
 
-    ch_software_versions = Channel.empty()
+    ch_versions = Channel.empty()
 
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
+
     INPUT_CHECK (
         ch_input
     )
+    ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
 
     //
-    // MODULE: Run FastQC
+    // Branching input channel by meta.method 
     //
-    FASTQC (
-        INPUT_CHECK.out.reads
+
+    INPUT_CHECK.out.reads
+    .branch { 
+        shortread:  it[0].method == "shortread"
+        longread:   it[0].method == "longread"
+        hybrid:     it[0].method == "hybrid"
+    }.set { types }
+
+    //
+    // SHORTREAD ASSEMBLY
+    //
+
+    SHORTREAD_ASSEMBLY_SPADES {
+        types.shortread
+    }    
+    ch_versions = ch_versions.mix(SHORTREAD_ASSEMBLY_SPADES.out.versions)
+
+    //
+    // LONGREAD ASSEMBLY
+    //
+
+    LONGREAD_ASSEMBLY_FLYE {
+        types.longread
+    }
+    ch_versions = ch_versions.mix(LONGREAD_ASSEMBLY_FLYE.out.versions)
+    
+    //
+    // HYBRID ASSEMBLY
+    //
+
+    HYBRID_ASSEMBLY (
+        types.hybrid
     )
-    ch_software_versions = ch_software_versions.mix(FASTQC.out.version.first().ifEmpty(null))
-
+    ch_versions = ch_versions.mix(HYBRID_ASSEMBLY.out.versions)
+    
     //
     // MODULE: Pipeline reporting
     //
-    ch_software_versions
-        .map { it -> if (it) [ it.baseName, it ] }
-        .groupTuple()
-        .map { it[1][0] }
-        .flatten()
-        .collect()
-        .set { ch_software_versions }
 
-    GET_SOFTWARE_VERSIONS (
-        ch_software_versions.map { it }.collect()
+    Ch_assemblies = Channel.empty()
+
+    Ch_assemblies = Ch_assemblies.mix(
+        SHORTREAD_ASSEMBLY_SPADES.out.contigs.collect{ it[1] },
+        LONGREAD_ASSEMBLY_FLYE.out.fasta.collect{ it[1] },
+        HYBRID_ASSEMBLY.out.fasta.collect{ it[1] }
+    ).collect()
+
+    Quast_fasta = Channel.fromPath('dummy_fasta')
+    Quast_gff = Channel.fromPath('dummy_gff')
+    QUAST (
+        Ch_assemblies,
+        Quast_fasta,
+        Quast_gff,
+        false,
+        false
+    )
+    
+    ch_versions = ch_versions.mix(QUAST.out.versions)
+
+    CUSTOM_DUMPSOFTWAREVERSIONS (
+        ch_versions.unique().collectFile(name: 'collated_versions.yml')
     )
 
-    //
-    // MODULE: MultiQC
-    //
-    workflow_summary    = WorkflowAsanovi.paramsSummaryMultiqc(workflow, summary_params)
+    workflow_summary  = WorkflowAsanovi.paramsSummaryMultiqc(workflow, summary_params)
+
     ch_workflow_summary = Channel.value(workflow_summary)
 
     ch_multiqc_files = Channel.empty()
     ch_multiqc_files = ch_multiqc_files.mix(Channel.from(ch_multiqc_config))
     ch_multiqc_files = ch_multiqc_files.mix(ch_multiqc_custom_config.collect().ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'))
-    ch_multiqc_files = ch_multiqc_files.mix(GET_SOFTWARE_VERSIONS.out.yaml.collect())
-    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]}.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(CUSTOM_DUMPSOFTWAREVERSIONS.out.mqc_yml.collect())
+    ch_multiqc_files = ch_multiqc_files.mix(QUAST.out.tsv.ifEmpty([]))
 
     MULTIQC (
         ch_multiqc_files.collect()
     )
-    multiqc_report       = MULTIQC.out.report.toList()
-    ch_software_versions = ch_software_versions.mix(MULTIQC.out.version.ifEmpty(null))
+
+
 }
 
 /*

@@ -3,11 +3,26 @@
     "homePage": "https://github.com/nf-core/asanovi",
     "repos": {
         "nf-core/modules": {
+            "custom/dumpsoftwareversions": {
+                "git_sha": "e20e57f90b6787ac9a010a980cf6ea98bd990046"
+            },
             "fastqc": {
-                "git_sha": "e937c7950af70930d1f34bb961403d9d2aa81c7d"
+                "git_sha": "9d0cad583b9a71a6509b754fdf589cbfbed08961"
+            },
+            "minimap2/align": {
+                "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d"
             },
             "multiqc": {
-                "git_sha": "e937c7950af70930d1f34bb961403d9d2aa81c7d"
+                "git_sha": "20d8250d9f39ddb05dfb437603aaf99b5c0b2b41"
+            },
+            "quast": {
+                "git_sha": "e745e167c1020928ef20ea1397b6b4d230681b4d"
+            },
+            "samtools/sort": {
+                "git_sha": "1ad73f1b2abdea9398680d6d20014838135c9a35"
+            },
+            "spades": {
+                "git_sha": "9d0cad583b9a71a6509b754fdf589cbfbed08961"
             }
         }
     }
