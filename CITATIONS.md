@@ -1,4 +1,4 @@
-# nf-core/asanovi: Citations
+# asanovi: Citations
 
 ## [nf-core](https://pubmed.ncbi.nlm.nih.gov/32055031/)
 
@@ -10,8 +10,18 @@
 
 ## Pipeline tools
 
-* [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
-
+* [Spades](https://github.com/ablab/spades)
+	> Prjibelski, Andrey, et al. "Using SPAdes de novo assembler." Current protocols in bioinformatics 70.1 (2020): e102.
+* [Flye](https://github.com/fenderglass/Flye)
+	> Mikhail Kolmogorov, Jeffrey Yuan, Yu Lin and Pavel Pevzner, "Assembly of Long Error-Prone Reads Using Repeat Graphs", Nature Biotechnology, 2019 doi:10.1038/s41587-019-0072-8
+* [Pilon](https://github.com/broadinstitute/pilon)
+	> Walker, Bruce J., et al. "Pilon: an integrated tool for comprehensive microbial variant detection and genome assembly improvement." PloS one 9.11 (2014): e112963.
+* [Minimap2](https://github.com/lh3/minimap2)
+	> Li, Heng. "Minimap2: pairwise alignment for nucleotide sequences." Bioinformatics 34.18 (2018): 3094-3100.
+* [Samtools](https://github.com/samtools/samtools)
+	> Danecek, Petr, et al. "Twelve years of SAMtools and BCFtools." Gigascience 10.2 (2021): giab008.
+* [Quast](https://github.com/ablab/quast)
+	> Gurevich, Alexey, et al. "QUAST: quality assessment tool for genome assemblies." Bioinformatics 29.8 (2013): 1072-1075.
 * [MultiQC](https://www.ncbi.nlm.nih.gov/pubmed/27312411/)
     > Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics. 2016 Oct 1;32(19):3047-8. doi: 10.1093/bioinformatics/btw354. Epub 2016 Jun 16. PubMed PMID: 27312411; PubMed Central PMCID: PMC5039924.
 
