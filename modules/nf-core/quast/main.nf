@@ -1,13 +1,13 @@
 process QUAST {
     label 'process_medium'
 
-    conda (params.enable_conda ? 'bioconda::quast=5.0.2' : null)
+    conda "bioconda::quast=5.2.0"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/quast:5.0.2--py37pl526hb5aa323_2' :
-        'quay.io/biocontainers/quast:5.0.2--py37pl526hb5aa323_2' }"
+        'https://depot.galaxyproject.org/singularity/quast:5.2.0--py39pl5321h2add14b_1' :
+        'quay.io/biocontainers/quast:5.2.0--py39pl5321h2add14b_1' }"
 
     input:
-    path consensus
+    tuple val(meta), path(consensus)
     path fasta
     path gff
     val use_fasta
@@ -23,7 +23,7 @@ process QUAST {
 
     script:
     def args = task.ext.args   ?: ''
-    prefix   = task.ext.prefix ?: 'quast'
+    prefix   = task.ext.prefix ?: meta
     def features  = use_gff ? "--features $gff" : ''
     def reference = use_fasta ? "-r $fasta" : ''
     """

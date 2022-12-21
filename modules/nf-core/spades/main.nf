@@ -1,16 +1,16 @@
 process SPADES {
     tag "$meta.id"
     label 'process_high'
-    /* publishDir "${params.outdir}/spades/${meta.id}", */
-    /*     mode: params.publish_dir_mode */
 
-    conda (params.enable_conda ? 'bioconda::spades=3.15.3' : null)
+    conda "bioconda::spades=3.15.4"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/spades:3.15.3--h95f258a_0' :
-        'quay.io/biocontainers/spades:3.15.3--h95f258a_0' }"
+        'https://depot.galaxyproject.org/singularity/spades:3.15.4--h95f258a_0' :
+        'quay.io/biocontainers/spades:3.15.4--h95f258a_0' }"
 
     input:
     tuple val(meta), path(illumina)
+    val yml
+    val hmm
 
     output:
     tuple val(meta), path('*.scaffolds.fa.gz')    , optional:true, emit: scaffolds
@@ -21,6 +21,9 @@ process SPADES {
     tuple val(meta), path('*.log')                , emit: log
     path  "versions.yml"                          , emit: versions
 
+    when:
+    task.ext.when == null || task.ext.when
+
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
@@ -28,13 +31,16 @@ process SPADES {
     def illumina_reads = illumina ? ( meta.single_end ? "-s $illumina" : "-1 ${illumina[0]} -2 ${illumina[1]}" ) : ""
     /* def pacbio_reads = pacbio ? "--pacbio $pacbio" : "" */
     /* def nanopore_reads = nanopore ? "--nanopore $nanopore" : "" */
-    /* def custom_hmms = hmm ? "--custom-hmms $hmm" : "" */
+    def custom_hmms = hmm ? "--custom-hmms $hmm" : ""
+    def reads = yml ? "--dataset $yml" : "$illumina_reads"
+    /* def reads = yml == "yml_none" ? "$illumina_reads $pacbio_reads $nanopore_reads" : "--dataset $yml" */
     """
     spades.py \\
         $args \\
         --threads $task.cpus \\
         --memory $maxmem \\
-        $illumina_reads \\
+        $custom_hmms \\
+        $reads \\
         -o ./
     mv spades.log ${prefix}.spades.log
 

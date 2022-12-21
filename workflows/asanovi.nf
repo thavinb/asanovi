@@ -41,8 +41,8 @@ ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multi
 //
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
-include { INPUT_CHECK } from '../subworkflows/local/input_check' 
-include { HYBRID_ASSEMBLY } from '../subworkflows/local/hybrid_assembly.nf' 
+include { INPUT_CHECK } from '../subworkflows/local/input_check'
+include { HYBRID_ASSEMBLY } from '../subworkflows/local/hybrid_assembly.nf'
 
 /*
 ========================================================================================
@@ -53,12 +53,12 @@ include { HYBRID_ASSEMBLY } from '../subworkflows/local/hybrid_assembly.nf'
 //
 // MODULE: Installed directly from nf-core/modules
 //
-include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/modules/custom/dumpsoftwareversions/main'
-include { SPADES as SHORTREAD_ASSEMBLY_SPADES } from '../modules/nf-core/modules/spades/main.nf'
-include { FLYE as LONGREAD_ASSEMBLY_FLYE} from '../modules/local/flye' 
-include { QUAST } from '../modules/nf-core/modules/quast/main'
-include { MULTIQC } from '../modules/nf-core/modules/multiqc/main'
-
+include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoftwareversions/main'
+include { SPADES as SHORTREAD_ASSEMBLY_SPADES } from '../modules/nf-core/spades/main.nf'
+include { FLYE as LONGREAD_ASSEMBLY_FLYE} from '../modules/local/flye'
+include { QUAST } from '../modules/nf-core/quast/main'
+include { MULTIQC } from '../modules/nf-core/multiqc/main'
+include { UNICYCLER as UNICYCLER_ASSEMBLY} from '../modules/nf-core/unicycler/main'
 /*
 ========================================================================================
     RUN MAIN WORKFLOW
@@ -82,34 +82,36 @@ workflow ASANOVI {
     ch_versions = ch_versions.mix(INPUT_CHECK.out.versions)
 
     //
-    // Branching input channel by meta.method 
+    // Branching input channel by meta.method
     //
 
     INPUT_CHECK.out.reads
-    .branch { 
+    .branch {
         shortread:  it[0].method == "shortread"
         longread:   it[0].method == "longread"
         hybrid:     it[0].method == "hybrid"
     }.set { types }
 
+
     //
     // SHORTREAD ASSEMBLY
     //
-
-    SHORTREAD_ASSEMBLY_SPADES {
-        types.shortread
-    }    
+    SHORTREAD_ASSEMBLY_SPADES (
+        types.shortread,
+		false,
+		false
+    )
     ch_versions = ch_versions.mix(SHORTREAD_ASSEMBLY_SPADES.out.versions)
 
     //
     // LONGREAD ASSEMBLY
     //
 
-    LONGREAD_ASSEMBLY_FLYE {
+    LONGREAD_ASSEMBLY_FLYE (
         types.longread
-    }
+    )
     ch_versions = ch_versions.mix(LONGREAD_ASSEMBLY_FLYE.out.versions)
-    
+
     //
     // HYBRID ASSEMBLY
     //
@@ -118,29 +120,48 @@ workflow ASANOVI {
         types.hybrid
     )
     ch_versions = ch_versions.mix(HYBRID_ASSEMBLY.out.versions)
-    
+
+    UNICYCLER_ASSEMBLY (
+        types.hybrid
+    )
+    ch_versions = ch_versions.mix(HYBRID_ASSEMBLY.out.versions)
+
     //
     // MODULE: Pipeline reporting
     //
 
     Ch_assemblies = Channel.empty()
 
-    Ch_assemblies = Ch_assemblies.mix(
-        SHORTREAD_ASSEMBLY_SPADES.out.contigs.collect{ it[1] },
-        LONGREAD_ASSEMBLY_FLYE.out.fasta.collect{ it[1] },
-        HYBRID_ASSEMBLY.out.fasta.collect{ it[1] }
-    ).collect()
+	Ch_ref = Channel.fromPath("/home/thavin/dev_test/ref.csv")
+		.splitCsv()
+		.map {  [ it[0], [ it[1], it[2]] ] }
 
-    Quast_fasta = Channel.fromPath('dummy_fasta')
-    Quast_gff = Channel.fromPath('dummy_gff')
+    Ch_assemblies_fix = Ch_assemblies.mix(
+			SHORTREAD_ASSEMBLY_SPADES.out.contigs,
+			LONGREAD_ASSEMBLY_FLYE.out.fasta,
+			HYBRID_ASSEMBLY.out.fasta,
+			UNICYCLER_ASSEMBLY.out.scaffolds
+    	)
+		  .map {
+			def sample_id = it[0].id =~ /SAMN[0-9]*/
+			def sample_meta = sample_id[0]
+			[ sample_meta, it[1] ]
+		  }
+		  .groupTuple()
+
+	Quast_input = Ch_assemblies_fix.mix(Ch_ref).groupTuple()
+	Quast_input.view()
+
+    /* Quast_fasta = Channel.fromPath('dummy_fasta') */
+    /* Quast_gff = Channel.fromPath('dummy_gff') */
     QUAST (
-        Ch_assemblies,
-        Quast_fasta,
-        Quast_gff,
-        false,
-        false
+        Quast_input.map{ [ it[0], it[1][1] ] },
+        Quast_input.map{ it[1][0][0] },
+        Quast_input.map{ it[1][0][1] },
+        true,
+        true
     )
-    
+
     ch_versions = ch_versions.mix(QUAST.out.versions)
 
     CUSTOM_DUMPSOFTWAREVERSIONS (
@@ -158,8 +179,14 @@ workflow ASANOVI {
     ch_multiqc_files = ch_multiqc_files.mix(CUSTOM_DUMPSOFTWAREVERSIONS.out.mqc_yml.collect())
     ch_multiqc_files = ch_multiqc_files.mix(QUAST.out.tsv.ifEmpty([]))
 
+    multiqc_conf = Channel.fromPath('dummy_conf')
+    multiqc_exconf = Channel.fromPath('dummy_exconf')
+    multiqc_logo = Channel.fromPath('dummy_logo')
     MULTIQC (
-        ch_multiqc_files.collect()
+        ch_multiqc_files.collect(),
+		multiqc_conf,
+		multiqc_exconf,
+		multiqc_logo
     )
 
 
